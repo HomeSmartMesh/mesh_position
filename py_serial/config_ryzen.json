@@ -1,0 +1,14 @@
+{
+    "serial":{
+        "ID":"0x1366:0x105",
+        "port":"/dev/ttyUSB0",
+        "baud":115200
+    },
+    "friendlyNames":{
+        "90A971A3D1A1B648":"Tag"
+    },
+    "log":{
+        "logfile":"serial(date).log",
+        "level":"Info"
+    }
+}
