@@ -1,9 +1,11 @@
 import serial
 from serial import Serial
 from serial.tools import list_ports
+from serial.threaded import LineReader,ReaderThread
+from time import sleep
 import cfg
 import logging as log
-import sys
+import sys,traceback
 import json
 
 config = cfg.configure_log(__file__)
@@ -65,9 +67,41 @@ def log_port_status():
     log.info(f"uart> {ser.name} : {open_text}")
     return
 
-def serial_start(config,serial_on_line):
+def serial_stop():
+    log.info("closing serial port")
+    ser.flush()
+    ser.close()
+    log_port_status()
+    return
+
+class PrintLines(LineReader):
+    def connection_made(self, transport):
+        super(PrintLines, self).connection_made(transport)
+        sys.stdout.write('serial>port opened\n')
+        self.write_line('ping')
+
+    def handle_line(self, data):
+        sys.stdout.write('serial>line received: {}\n'.format(repr(data)))
+        line = repr(data)
+        if(len(line)):
+            line = line.replace(r"\r","")
+            line = line.replace(r"\n","")
+            if(line.find("{") != -1):
+                parts = line.split("{")
+                topic = friendly_topic(parts[0])
+                payload = '{'+parts[1]
+                print(f"decoding '{payload}'")
+                data = json.loads(payload)
+                on_json_function(topic,data)
+
+    def connection_lost(self, exc):
+        if exc:
+            traceback.print_exc(exc)
+        sys.stdout.write('serial>port closed\n')
+
+def serial_start(config,serial_on_json):
     global on_json_function
-    on_json_function = serial_on_line
+    on_json_function = serial_on_json
     global ser
     dev = None
     if("ID" in config["serial"]):
@@ -83,12 +117,10 @@ def serial_start(config,serial_on_line):
     ser.reset_input_buffer()
     ser.reset_output_buffer()
     log_port_status()
-
     return ser
 
-def serial_stop():
-    log.info("closing serial port")
-    ser.flush()
-    ser.close()
-    log_port_status()
+def star_threaded():
+    with ReaderThread(ser, PrintLines) as protocol:
+        #protocol.write_line('hello')
+        sleep(10)
     return

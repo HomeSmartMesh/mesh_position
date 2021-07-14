@@ -3,7 +3,7 @@ from time import sleep
 import logging as log
 import cfg
 import json
-
+import _thread
 
 def serial_on_json(topic,data):
     log.info(f"'{topic}' =>")
@@ -11,14 +11,18 @@ def serial_on_json(topic,data):
     return
 
 
-def loop_forever():
+def serial_loop_forever():
     while(True):
-        sleep(0.1)
         ser.run()
-    return
+
+def main_loop_forever():
+    while(True):
+        sleep(1)
 
 
 config = cfg.configure_log(__file__)
 ser.serial_start(config,serial_on_json)
 
-loop_forever()
+_thread.start_new_thread( serial_loop_forever, () )
+
+main_loop_forever()
