@@ -7,6 +7,7 @@
     "friendlyNames":{
         "90A971A3D1A1B648":"Tag"
     },
+    "base_topic":"sm",
     "log":{
         "logfile":"serial(date).log",
         "level":"Info"
