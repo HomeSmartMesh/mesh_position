@@ -23,7 +23,20 @@ def friendly_topic(topic):
         name = long_name
     return base_topic+'/'+name
 
-def get_device(id):
+def get_device_ser(ser):
+    dev = None
+    devices = list_ports.comports()
+    for device in devices:
+        if(device.hwid is not None):
+            hwid_split = device.hwid.split("SER=")
+            if(len(hwid_split) == 2):
+                serial = hwid_split[1]
+                if(ser == serial):
+                    dev = device.device
+                    log.info(f"uart> device with serial {ser} found at {dev}")
+    return dev
+
+def get_device_id(id):
     dev = None
     devices = list_ports.comports()
     for device in devices:
@@ -41,10 +54,11 @@ def run():
         if(len(line)):
             line = line.replace('\r','')
             line = line.replace('\n','')
-            if(line.find("{") != -1):
-                parts = line.split("{")
-                topic = friendly_topic(parts[0])
-                payload = '{'+parts[1].rstrip('\n')
+            splint_index = line.find("{")
+            if(splint_index != -1):
+                topic = friendly_topic(line[0:splint_index])
+                payload = line[splint_index:]
+                #print(f"topic='{topic}', payload='{payload}'")
                 data = json.loads(payload)
                 on_json_function(topic,data)
     except OSError as e:
@@ -77,8 +91,13 @@ def serial_start(config,serial_on_json):
     on_json_function = serial_on_json
     global ser
     dev = None
-    if("ID" in config["serial"]):
-        dev = get_device(config["serial"]["ID"])
+    if("SER" in config["serial"]):
+        dev = get_device_ser(config["serial"]["SER"])
+        if(dev is None):
+            log.error(f"device {config['serial']['SER']} not available")
+            sys.exit(1)
+    elif("ID" in config["serial"]):
+        dev = get_device_id(config["serial"]["ID"])
         if(dev is None):
             log.error(f"device {config['serial']['ID']} not available")
             sys.exit(1)

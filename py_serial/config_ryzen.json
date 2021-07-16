@@ -1,5 +1,6 @@
 {
     "serial":{
+        "SER":"000760130125",
         "ID":"0x1366:0x105",
         "port":"/dev/ttyUSB0",
         "baud":115200
@@ -11,5 +12,17 @@
     "log":{
         "logfile":"serial(date).log",
         "level":"Info"
+    },
+    "dwt_config":{
+        "chan": 5,
+        "dataRate": "DWT_BR_6M8",
+        "nsSFD": "NonStandard",
+        "phrMode": "DWT_PHRMODE_EXT",
+        "prf": "DWT_PRF_64M",
+        "rxCode": 9,
+        "rxPAC": "DWT_PAC8",
+        "sfdTO": 129,
+        "txCode": 9,
+        "txPreambLength": "DWT_PLEN_128"
     }
 }
