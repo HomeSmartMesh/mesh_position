@@ -6,6 +6,7 @@ mp.init()
 #mp.test_rf_ping_all_rssi()
 #mp.test_uwb_twr_single()
 #mp.test_uwb_twr_list()
-mp.test_uwb_twr_db("tag_middle_four")
+#mp.db_uwb_twr("tag_four_twr")
+mp.db_uwb_ping_diag("tag_four_ping",100)
 
 #mp.listen()

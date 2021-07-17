@@ -10,7 +10,7 @@ class mpError(Exception):
     pass
 class UwbTwrArgumentError(mpError):
     pass
-class UwbTwrNoResponse(mpError):
+class UwbNoResponse(mpError):
     pass
 
 messages = queue.Queue()
@@ -84,22 +84,7 @@ def rf_ping_rssi(node_name):
     except queue.Empty:
         return 0
 
-def test_rf_ping_rssi(node_name, nb_tests):
-    for i in range(nb_tests):
-        rssi = rf_ping_rssi(node_name)
-        if(rssi != 0):
-            print(f"test_ping({i})> rssi = {rssi}")
-        else:
-            print(f"test_ping({i})> failed")
-
-def test_rf_ping_all_rssi():
-    for uid,fname in config["friendlyNames"].items():
-        rssi = rf_ping_rssi(fname)
-        if(rssi != 0):
-            print(f"test_ping({fname})> rssi = {rssi}")
-        else:
-            print(f"test_ping({fname})> failed")
-
+#TODO count responses not supported yet
 def uwb_ping_diag(pinger, target, at_ms=100, count=0, count_ms=0):
     try:
         command = {"uwb_cmd":"ping","pinger":pinger,"target":target,"at_ms":at_ms}
@@ -109,7 +94,7 @@ def uwb_ping_diag(pinger, target, at_ms=100, count=0, count_ms=0):
             command["count_ms"]="count_ms"
         #start = perf_counter()
         ser.send(base_topic+json.dumps(command)+'\r\n')#0.222 sec
-        (echotopic,echodata) = messages.get(block=True, timeout=0.4)
+        messages.get(block=True, timeout=0.4)
         (topic,data) = messages.get(block=True, timeout=0.4)
         #end = perf_counter()
         #print(f"response duration = {end-start} s")
@@ -117,18 +102,9 @@ def uwb_ping_diag(pinger, target, at_ms=100, count=0, count_ms=0):
         if "uwb_cmd" in data:
             if(data["uwb_cmd"] == "ping"):
                 return data['diag']
-        return {}
+        raise UwbNoResponse(f"no 'uwb_cmd' in response")
     except queue.Empty:
-        return {}
-
-def test_uwb_ping_diag():
-    pinger = 0
-    target = 1
-    diag = uwb_ping_diag(pinger, target)
-    if("stdNoise" in diag):
-        print(f"test_uwb_ping> ({pinger})->({target}) stdNoise = {diag['stdNoise']}")
-    else:
-        print(f"test_uwb_ping> failed")
+        raise UwbNoResponse(f"no response from pinger({pinger}) -> target({target})")
 
 def dwt_config_get(node_name="all"):
     try:
@@ -217,8 +193,31 @@ def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=
                         result.append(data)
             return result
     except queue.Empty:
-        raise UwbTwrNoResponse(f"No or not enough responses receveid({received}) / expected({resp_len})")
+        raise UwbNoResponse(f"No or not enough responses receveid({received}) / expected({resp_len})")
     return
+
+#------------------------- Tests -------------------------
+def test_rf_ping_rssi(node_name, nb_tests):
+    for i in range(nb_tests):
+        rssi = rf_ping_rssi(node_name)
+        if(rssi != 0):
+            print(f"test_ping({i})> rssi = {rssi}")
+        else:
+            print(f"test_ping({i})> failed")
+
+def test_rf_ping_all_rssi():
+    for uid,fname in config["friendlyNames"].items():
+        rssi = rf_ping_rssi(fname)
+        if(rssi != 0):
+            print(f"test_ping({fname})> rssi = {rssi}")
+        else:
+            print(f"test_ping({fname})> failed")
+
+def test_uwb_ping_diag():
+    pinger = 0
+    target = 1
+    diag = uwb_ping_diag(pinger, target)
+    print(f"test_uwb_ping> ({pinger})->({target}) stdNoise = {diag['stdNoise']}")
 
 def test_uwb_twr_single():
     print("-----------------test_uwb_twr_single-----------------")
@@ -238,11 +237,29 @@ def test_uwb_twr_list():
         print(f"mp> seq[{res['seq']}] ({res['initiator']})->({res['responder']}) range= {res['range']}")
     return
 
-def test_uwb_twr_db(fileName):
+#------------------------- Database build -------------------------
+
+def db_uwb_twr(fileName):
     print(f"-----------------test_uwb_twr_db({fileName})-----------------")
     initiator = 0
     responders = [1, 2, 3, 4]
     result_list = uwb_twr(initiator=initiator, responders=responders, step_ms=10, count=3, count_ms=50)
     newFileName = save_json_timestamp(fileName,result_list)
-    print(f"saved results in {newFileName}")
+    print(f"db_uwb_twr> saved results in {newFileName}")
+    return
+
+def db_uwb_ping_diag(fileName,nb_repeat):
+    ping_sequence = [(0,1), (0,2), (0,3), (0,4), (1,0), (2,0), (3,0), (4,0)]
+    result_list = []
+    nb_success = 0
+    for i in range(nb_repeat):
+        try:
+            for pinger,target in ping_sequence:
+                diag = uwb_ping_diag(pinger, target)
+                result_list.append({"pinger":pinger, "target":target, "diag":diag,"seq":i})
+            nb_success = nb_success + 1
+        except UwbNoResponse:
+            print(f"db_uwb_ping_diag> Skipping sequence {i} due to missing responses")
+    newFileName = save_json_timestamp(fileName,result_list)
+    print(f"db_uwb_ping_diag> ({nb_success})/({nb_repeat}) sequences saved in {newFileName}")
     return
