@@ -68,7 +68,7 @@ def run():
     return res
 
 def send(data):
-    ser.write(data.encode())
+    ser.write(data.encode("ascii"))
     return
 
 def log_port_status():

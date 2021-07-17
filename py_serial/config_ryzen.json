@@ -6,8 +6,12 @@
         "baud":115200
     },
     "friendlyNames":{
-        "90A971A3D1A1B648":"Tag"
-    },
+        "90A971A3D1A1B648":"Tag",
+        "98501ED22B42EB41":"FrontRight",
+        "E8D81FEE52C283EB":"FrontLeft",
+        "C24FD51212E905F0":"RearLeft",
+        "530BE91D3559D690":"RearRight"
+            },
     "base_topic":"sm",
     "log":{
         "logfile":"serial(date).log",

@@ -5,15 +5,25 @@ import threading, queue
 import logging as log
 import sys
 import json
-
+import datetime
 class mpError(Exception):
     pass
 class UwbTwrArgumentError(mpError):
+    pass
+class UwbTwrNoResponse(mpError):
     pass
 
 messages = queue.Queue()
 name_to_uid = {}
 base_topic = ""
+config = {}
+
+def save_json_timestamp(fileName,data):
+    fileName = "./test_db/"+ fileName + datetime.datetime.now().strftime(' %Y.%m.%d %H-%M-%S')+".json"
+    jfile = open(fileName, "w")
+    jfile.write(json.dumps(data, indent=4))
+    jfile.close()
+    return fileName
 
 def serial_on_json(topic,data):
     messages.put((topic,data))
@@ -30,6 +40,7 @@ def serial_loop_forever():
 def init():
     global name_to_uid
     global base_topic
+    global config
     print("mp>getting config")
     config = cfg.configure_log(__file__)
     name_to_uid = {v: k for k, v in config["friendlyNames"].items()}
@@ -37,7 +48,7 @@ def init():
     base_topic = config["base_topic"]
     print("mp>starting serial")
     ser.serial_start(config,serial_on_json)
-    print("mo>start serial parsing")
+    print("mp>start serial parsing")
     threading.Thread(target=serial_loop_forever, daemon=True).start()
 
 def listen():
@@ -80,6 +91,14 @@ def test_rf_ping_rssi(node_name, nb_tests):
             print(f"test_ping({i})> rssi = {rssi}")
         else:
             print(f"test_ping({i})> failed")
+
+def test_rf_ping_all_rssi():
+    for uid,fname in config["friendlyNames"].items():
+        rssi = rf_ping_rssi(fname)
+        if(rssi != 0):
+            print(f"test_ping({fname})> rssi = {rssi}")
+        else:
+            print(f"test_ping({fname})> failed")
 
 def uwb_ping_diag(pinger, target, at_ms=100, count=0, count_ms=0):
     try:
@@ -138,6 +157,7 @@ def dwt_config_set(node_name, chan=5,):
     return
 
 def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=100, step_ms=None,count=None,count_ms=None):
+    resp_len = 1
     if(initiator is None) and (not initiators):
         raise UwbTwrArgumentError("initiator needed")
     if(responder is None) and (not responders):
@@ -158,27 +178,71 @@ def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=
     if(count_ms):
         command["count_ms"] = count_ms
     if((len(initiators)>1) or (len(responders)>1)):
+        if(initiators) and (responders):
+            resp_len = len(initiators) * len(responders)
+        elif(initiators):
+            resp_len = len(initiators)
+        elif(responders):
+            resp_len = len(responders)
         if(not step_ms):
             raise UwbTwrArgumentError("step_ms is needed for multi step sequences")
     if count and (count > 1):
+        resp_len = resp_len * count
         if(not count_ms):
             raise UwbTwrArgumentError("count_ms is needed when count > 1")
-    #start = perf_counter()
+    start = perf_counter()
     ser.send(base_topic+json.dumps(command)+'\r\n')#0.209
-    (echotopic,echodata) = messages.get(block=True, timeout=0.4)
-    (topic,data) = messages.get(block=True, timeout=0.4)
-    #end = perf_counter()
-    #print(f"response duration = {end-start} s")
-    messages.task_done()
-    if "uwb_cmd" in data:
-        if(data["uwb_cmd"] == "twr"):
-            return data['range']
+    #ser.send('sm{"uwb_cmd": "twr", "at_ms": 100, "initiator": 0, "responders": [1, 2, 3, 4], "step_ms": 10}\r\n')
+    try:
+        received = 0
+        messages.get(block=True, timeout=0.4)
+        if(resp_len == 1):#simple API, returns range as single value
+            (topic,data) = messages.get(block=True, timeout=0.4)
+            #end = perf_counter()
+            #print(f"response duration = {end-start} s")
+            if "uwb_cmd" in data:
+                if(data["uwb_cmd"] == "twr"):
+                    received = received + 1
+                    return data['range']
+        else:#returns a list
+            result = []
+            for i in range(resp_len):
+                (topic,data) = messages.get(block=True, timeout=0.4)
+                #end = perf_counter()
+                #print(f"response duration = {end-start} s")
+                if "uwb_cmd" in data:
+                    if(data["uwb_cmd"] == "twr"):
+                        del data["uwb_cmd"]
+                        received = received + 1
+                        result.append(data)
+            return result
+    except queue.Empty:
+        raise UwbTwrNoResponse(f"No or not enough responses receveid({received}) / expected({resp_len})")
     return
 
-def test_uwb_twr():
+def test_uwb_twr_single():
+    print("-----------------test_uwb_twr_single-----------------")
     for i in range(10):
         initiator = 0
         responder = 1
         range_measure = uwb_twr(initiator, responder)
-        print(f"mp> range-{i} ({initiator})->({responder}) = {range_measure}")
+        print(f"mp> test-{i} ({initiator})->({responder}) range = {range_measure}")
+    return
+
+def test_uwb_twr_list():
+    print("-----------------test_uwb_twr_list-----------------")
+    initiator = 0
+    responders = [1, 2, 3, 4]
+    result_list = uwb_twr(initiator=initiator, responders=responders, step_ms=10)
+    for res in result_list:
+        print(f"mp> seq[{res['seq']}] ({res['initiator']})->({res['responder']}) range= {res['range']}")
+    return
+
+def test_uwb_twr_db(fileName):
+    print(f"-----------------test_uwb_twr_db({fileName})-----------------")
+    initiator = 0
+    responders = [1, 2, 3, 4]
+    result_list = uwb_twr(initiator=initiator, responders=responders, step_ms=10, count=3, count_ms=50)
+    newFileName = save_json_timestamp(fileName,result_list)
+    print(f"saved results in {newFileName}")
     return
