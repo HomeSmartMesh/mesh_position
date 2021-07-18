@@ -12,9 +12,8 @@ def get_local_json():
     """
     config = None
     dirname = os.path.dirname(sys.argv[0])
-    if(len(dirname) == 0):
-        dirname = "."
-    config_file = dirname+'/'+"config_"+socket.gethostname()+".json"
+    config_file = "./config_"+socket.gethostname()+".json"
+    print(f"checking file '{config_file}'")
     if(os.path.isfile(config_file)):
         print("loading: ",config_file)
         config = json.load(open(config_file))

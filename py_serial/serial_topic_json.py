@@ -3,12 +3,12 @@ from serial import Serial
 from serial.tools import list_ports
 from serial.threaded import LineReader,ReaderThread
 from time import sleep
-import cfg
+import utils as utl
 import logging as log
 import sys,traceback
 import json
 
-config = cfg.configure_log(__file__)
+config = utl.configure_log(__file__)
 ser = Serial()
 on_json_function = None
 

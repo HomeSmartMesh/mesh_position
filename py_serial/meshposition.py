@@ -87,12 +87,13 @@ def rf_short_id(node_name):
         #end = perf_counter()
         if "rf_cmd" in data:
             if(data["rf_cmd"] == "sid"):
-                return data['sid']
+                if "sid" in data:
+                    return data['sid']
         raise UwbNoResponse(f"no 'rf_cmd' in response")
     except queue.Empty:
         raise UwbNoResponse(f"no response for 'rf_cmd':'sid'")
 
-def rf_get_active_short_ids(node_name):
+def rf_get_active_short_ids():
     node_ids = {}
     for uid,fname in config["friendlyNames"].items():
         try:
@@ -265,6 +266,20 @@ def test_uwb_twr_list():
     return
 
 #------------------------- Database build -------------------------
+def get_list_uwb_ping_diag(ping_sequence,nb_repeat):
+    result_list = []
+    nb_success = 0
+    for i in range(nb_repeat):
+        try:
+            for pinger,target in ping_sequence:
+                diag = uwb_ping_diag(pinger, target)
+                result_list.append({"pinger":pinger, "target":target, "diag":diag,"seq":i})
+            nb_success = nb_success + 1
+        except UwbNoResponse:
+            print(f"db_uwb_ping_diag> Skipping sequence {i} due to missing responses")
+    print(f"db_uwb_ping_diag> ({nb_success})/({nb_repeat})")
+    return result_list
+#------------------------- Database save -------------------------
 
 def db_uwb_twr(fileName):
     print(f"-----------------test_uwb_twr_db({fileName})-----------------")
@@ -277,18 +292,9 @@ def db_uwb_twr(fileName):
 
 def db_uwb_ping_diag(fileName,nb_repeat):
     ping_sequence = [(0,1), (0,2), (0,3), (0,4), (1,0), (2,0), (3,0), (4,0)]
-    result_list = []
-    nb_success = 0
-    for i in range(nb_repeat):
-        try:
-            for pinger,target in ping_sequence:
-                diag = uwb_ping_diag(pinger, target)
-                result_list.append({"pinger":pinger, "target":target, "diag":diag,"seq":i})
-            nb_success = nb_success + 1
-        except UwbNoResponse:
-            print(f"db_uwb_ping_diag> Skipping sequence {i} due to missing responses")
+    result_list = get_list_uwb_ping_diag(ping_sequence, nb_repeat)
     newFileName = utl.save_json_timestamp(fileName,result_list)
-    print(f"db_uwb_ping_diag> ({nb_success})/({nb_repeat}) sequences saved in {newFileName}")
+    print(f"db_uwb_ping_diag> {len(result_list)} sequences saved in {newFileName}")
     return
 
 def db_sid_config(fileName):
