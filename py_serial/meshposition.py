@@ -1,6 +1,6 @@
 import serial_topic_json as ser
 from time import sleep, perf_counter
-import cfg
+import utils as utl
 import threading, queue
 import logging as log
 import sys
@@ -17,13 +17,6 @@ messages = queue.Queue()
 name_to_uid = {}
 base_topic = ""
 config = {}
-
-def save_json_timestamp(fileName,data):
-    fileName = "./test_db/"+ fileName + datetime.datetime.now().strftime(' %Y.%m.%d %H-%M-%S')+".json"
-    jfile = open(fileName, "w")
-    jfile.write(json.dumps(data, indent=4))
-    jfile.close()
-    return fileName
 
 def serial_on_json(topic,data):
     messages.put((topic,data))
@@ -42,7 +35,7 @@ def init():
     global base_topic
     global config
     print("mp>getting config")
-    config = cfg.configure_log(__file__)
+    config = utl.configure_log(__file__)
     name_to_uid = {v: k for k, v in config["friendlyNames"].items()}
     print(name_to_uid)
     base_topic = config["base_topic"]
@@ -83,6 +76,32 @@ def rf_ping_rssi(node_name):
         return 0
     except queue.Empty:
         return 0
+
+def rf_short_id(node_name):
+    try:
+        uid = name_to_uid[node_name]
+        #start = perf_counter()
+        ser.send(base_topic+'/'+uid+'{"rf_cmd":"sid"}\r\n')
+        messages.get(block=True, timeout=0.2)
+        (topic,data) = messages.get(block=True, timeout=0.2)
+        #end = perf_counter()
+        if "rf_cmd" in data:
+            if(data["rf_cmd"] == "sid"):
+                return data['sid']
+        raise UwbNoResponse(f"no 'rf_cmd' in response")
+    except queue.Empty:
+        raise UwbNoResponse(f"no response for 'rf_cmd':'sid'")
+
+def rf_get_active_short_ids(node_name):
+    node_ids = {}
+    for uid,fname in config["friendlyNames"].items():
+        try:
+            sid = rf_short_id(fname)
+            node_ids[fname]={"sid":sid, "uid":uid}
+            print(f"({fname}) : ({sid})/({uid})")
+        except UwbNoResponse:
+            pass
+    return node_ids
 
 #TODO count responses not supported yet
 def uwb_ping_diag(pinger, target, at_ms=100, count=0, count_ms=0):
@@ -213,6 +232,14 @@ def test_rf_ping_all_rssi():
         else:
             print(f"test_ping({fname})> failed")
 
+def test_rf_all_short_id():
+    for uid,fname in config["friendlyNames"].items():
+        try:
+            sid = rf_short_id(fname)
+            print(f"get_short_id({fname}) => ({sid})")
+        except UwbNoResponse:
+            print(f"get_short_id({fname})> not available")
+
 def test_uwb_ping_diag():
     pinger = 0
     target = 1
@@ -244,7 +271,7 @@ def db_uwb_twr(fileName):
     initiator = 0
     responders = [1, 2, 3, 4]
     result_list = uwb_twr(initiator=initiator, responders=responders, step_ms=10, count=3, count_ms=50)
-    newFileName = save_json_timestamp(fileName,result_list)
+    newFileName = utl.save_json_timestamp(fileName,result_list)
     print(f"db_uwb_twr> saved results in {newFileName}")
     return
 
@@ -260,6 +287,13 @@ def db_uwb_ping_diag(fileName,nb_repeat):
             nb_success = nb_success + 1
         except UwbNoResponse:
             print(f"db_uwb_ping_diag> Skipping sequence {i} due to missing responses")
-    newFileName = save_json_timestamp(fileName,result_list)
+    newFileName = utl.save_json_timestamp(fileName,result_list)
     print(f"db_uwb_ping_diag> ({nb_success})/({nb_repeat}) sequences saved in {newFileName}")
+    return
+
+def db_sid_config(fileName):
+    print(f"-----------------db_sid_config({fileName})-----------------")
+    node_ids = rf_get_active_short_ids()
+    newFileName = utl.save_json_timestamp(fileName,node_ids)
+    print(f"db_uwb_twr> saved results in {newFileName}")
     return

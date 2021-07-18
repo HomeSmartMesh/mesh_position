@@ -10,11 +10,13 @@
         "98501ED22B42EB41":"FrontRight",
         "E8D81FEE52C283EB":"FrontLeft",
         "C24FD51212E905F0":"RearLeft",
-        "530BE91D3559D690":"RearRight"
-            },
+        "530BE91D3559D690":"RearRight",
+        "CBC216DC164B1DE8":"TestInit",
+        "1CF6567337562176":"TestResp"
+    },
     "base_topic":"sm",
     "log":{
-        "logfile":"serial(date).log",
+        "logfile":"log/serial(date).log",
         "level":"Info"
     },
     "dwt_config":{

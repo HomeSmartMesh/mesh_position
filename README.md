@@ -1,36 +1,20 @@
 # mesh_position
 High level Analysis and Apps for Mesh Position. An Ultra Wide Band RTLS with json API
-
-# Ground Truth
-All nodes are in line of sight and facing the vector x direction
-
-| Node | id |x   | y   |
-| ---  | --- | --- | --- |
-| Tag  |0 |  0.75| 0.75|
-| FR   |1 |   1.5 | 1.5 |
-| FL   |2 |   0   | 1.5 |
-| RL   |3 |   0   | 0   |
-| RR   |4 |   1.5 | 0   |
-
-Tag to Anchors offset = sqrt(sqr(0.75)+sqr(0.75)) = 1.06
-Ant 2 Ant 
-* 0-1 : 1.01
-* 0-2 : 1.01
-* 0-3 : 1.05
-* 0-4 : 1.04
+# install
+```shell
+pip install -r requirements
+pip install jupyterlab
+jupyter-lab
+```
 
 # MP todos
-- API get all node ids
-- API assign short id
-- add all rf sniffing to the uwb listener
-- handle json parsing errors and recover
-- API soft reset 
+- Python API reliable all config update
 
 # cli test
 UWB
 ```shell
 sm{"uwb_cmd":"config"}
-sm{"uwb_cmd":"ping", "pinger":0,"target":3,"at_ms":100}
+sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100}
 sm{"uwb_cmd":"twr","initiator":0,"responder":1,"at_ms":200}
 
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10,"count":3,"count_ms":50}

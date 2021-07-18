@@ -5,7 +5,7 @@ import socket
 from collections import OrderedDict
 import datetime
 
-# -------------------- config -------------------- 
+# -------------------- json files inout -------------------- 
 def get_local_json():
     """fetches the config.json file in the local directory
        if config_hostname.json is found it is used over the default one
@@ -26,6 +26,16 @@ def get_local_json():
         else:
             print("Fatal error 'config.json' not found")
     return config
+
+def save_json_timestamp(fileName,data):
+    fileName = "./test_db/"+ fileName + datetime.datetime.now().strftime(' %Y.%m.%d %H-%M-%S')+".json"
+    jfile = open(fileName, "w")
+    jfile.write(json.dumps(data, indent=4))
+    jfile.close()
+    return fileName
+
+def load_json(fileName):
+    return json.load(open(fileName))
 
 # -------------------- config -------------------- 
 def get_local_nodes(nodes_file):
@@ -57,3 +67,4 @@ def configure_log(logger_name):
     #else:
     #    print("Log file not available : %s"%(config["logfile"]))
     return global_config
+

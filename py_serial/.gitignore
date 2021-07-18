@@ -1,3 +1,6 @@
+log
 *.log
 __pycache__
 test_db
+venv
+.ipynb_checkpoints
