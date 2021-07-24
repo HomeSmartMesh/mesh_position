@@ -61,6 +61,11 @@ def run():
                 #print(f"topic='{topic}', payload='{payload}'")
                 data = json.loads(payload)
                 on_json_function(topic,data)
+            elif(line.startswith("uwb_cir_acc;")):
+                line_parts = line.split(";")
+                data_bytes_hex = line_parts[3].split(":")[1]
+                hex_data = bytearray.fromhex(data_bytes_hex)
+                on_json_function("uwb_cir_acc",hex_data)
     except OSError as e:
         log.error("uart> Handled OSError exception: %s",str(e))
     except UnicodeDecodeError as e:

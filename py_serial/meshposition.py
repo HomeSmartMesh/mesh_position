@@ -5,7 +5,7 @@ import threading, queue
 import logging as log
 import sys
 import json
-import datetime
+import math
 class mpError(Exception):
     pass
 class UwbTwrArgumentError(mpError):
@@ -215,6 +215,23 @@ def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=
     except queue.Empty:
         raise UwbNoResponse(f"No or not enough responses receveid({received}) / expected({resp_len})")
     return
+
+
+def uwb_cir(receiver_node_name):
+    #1016 sampley => 4096 bytes = 200 * 20 + 96
+    try:
+        uid = name_to_uid[receiver_node_name]
+        #start = perf_counter()
+        command = {"uwb_cmd":"cir_acc"}
+        ser.send(base_topic+'/'+uid+json.dumps(command)+'\r\n')
+        messages.get(block=True, timeout=2)
+        (topic,data) = messages.get(block=True, timeout=3)
+        #end = perf_counter()
+        if(topic == "uwb_cir_acc"):
+            return data
+        raise UwbNoResponse(f"Response not valid")
+    except queue.Empty:
+        raise UwbNoResponse(f"No response")
 
 #------------------------- Tests -------------------------
 def test_rf_ping_rssi(node_name, nb_tests):

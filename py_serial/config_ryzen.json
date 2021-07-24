@@ -1,6 +1,6 @@
 {
     "serial":{
-        "SER":"000760130125",
+        "SER":"000760129940",
         "ID":"0x1366:0x105",
         "port":"/dev/ttyUSB0",
         "baud":115200
@@ -10,9 +10,9 @@
         "98501ED22B42EB41":"FrontRight",
         "E8D81FEE52C283EB":"FrontLeft",
         "C24FD51212E905F0":"RearLeft",
-        "530BE91D3559D690":"RearRight",
-        "CBC216DC164B1DE8":"TestInit",
-        "1CF6567337562176":"TestResp"
+        "530BE91D3559D690":"Init",
+        "CBC216DC164B1DE8":"Tester",
+        "1CF6567337562176":"Resp"
     },
     "base_topic":"sm",
     "log":{
