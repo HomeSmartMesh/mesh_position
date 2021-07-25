@@ -6,13 +6,15 @@
         "baud":115200
     },
     "friendlyNames":{
-        "90A971A3D1A1B648":"Tag",
+        "90A971A3D1A1B648":"Test",
         "98501ED22B42EB41":"FrontRight",
         "E8D81FEE52C283EB":"FrontLeft",
         "C24FD51212E905F0":"RearLeft",
-        "530BE91D3559D690":"Init",
-        "CBC216DC164B1DE8":"Tester",
-        "1CF6567337562176":"Resp"
+        "E2F96EB1D7A476CC":"RearRight",
+        "530BE91D3559D690":"Green",
+        "CBC216DC164B1DE8":"Wired",
+        "1CF6567337562176":"Tester",
+        "5F7D70F99F462C99":"Simple"
     },
     "base_topic":"sm",
     "log":{

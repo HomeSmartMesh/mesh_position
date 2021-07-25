@@ -13,17 +13,17 @@ def get_local_json():
     config = None
     dirname = os.path.dirname(sys.argv[0])
     config_file = "./config_"+socket.gethostname()+".json"
-    print(f"checking file '{config_file}'")
+    #print(f"checking file '{config_file}'")
     if(os.path.isfile(config_file)):
-        print("loading: ",config_file)
+        #print("loading: ",config_file)
         config = json.load(open(config_file))
     else:
         config_file = dirname+'/'+"config.json"
         if(os.path.isfile(config_file)):
-            print("loading: %s",config_file)
+            #print("loading: %s",config_file)
             config = json.load(open(config_file))
         else:
-            print("Fatal error 'config.json' not found")
+            log.error("Fatal error 'config.json' not found")
     return config
 
 def save_json_timestamp(fileName,data):
@@ -53,7 +53,6 @@ def configure_log(logger_name):
     }
     #if(os.path.isfile(config["logfile"])):
     logfile = config["logfile"].replace("(date)",datetime.datetime.now().strftime('-%Y.%m.%d'))
-    log.info(f"logging in file '{logfile}'")
     for handler in log.root.handlers[:]:
         log.root.removeHandler(handler)
     log.basicConfig(    filename=logfile,
@@ -62,7 +61,8 @@ def configure_log(logger_name):
                         datefmt='%d %H:%M:%S'
                         )
     log.getLogger('').addHandler(log.StreamHandler())
-    log.info("====> '%s' started logging with level '%s' @ '%s'"%(logger_name,config["level"],str(datetime.datetime.utcnow())))
+    log.debug(f"{logger_name} started at {str(datetime.datetime.utcnow())}")
+    log.debug(f"logging in file '{logfile}' logs level {config['level']}")
     #else:
     #    print("Log file not available : %s"%(config["logfile"]))
     return global_config

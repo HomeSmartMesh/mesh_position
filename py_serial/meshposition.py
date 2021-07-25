@@ -14,7 +14,10 @@ class UwbNoResponse(mpError):
     pass
 
 messages = queue.Queue()
+stop_messages = queue.Queue()
 name_to_uid = {}
+name_to_sid = {}
+sid_to_name = {}
 base_topic = ""
 config = {}
 
@@ -25,24 +28,33 @@ def serial_on_json(topic,data):
 def serial_loop_forever():
     try:
         while(True):
+            try:
+                msg = stop_messages.get(block=False)
+                if(msg == "close"):
+                    ser.serial_stop()
+                    sys.exit(0)
+            except queue.Empty:
+                pass
             ser.run()
     except KeyboardInterrupt:
         log.error("ser> Interrupted by user Keyboard")
         sys.exit(0)
 
-def init():
+def start():
     global name_to_uid
     global base_topic
     global config
-    print("mp>getting config")
     config = utl.configure_log(__file__)
     name_to_uid = {v: k for k, v in config["friendlyNames"].items()}
-    print(name_to_uid)
+    log.debug(f"nodes in config db : {name_to_uid}")
     base_topic = config["base_topic"]
-    print("mp>starting serial")
     ser.serial_start(config,serial_on_json)
-    print("mp>start serial parsing")
     threading.Thread(target=serial_loop_forever, daemon=True).start()
+    print("mp>serial thread started")
+
+def stop():
+    stop_messages.put("close")
+    
 
 def listen():
     try:
@@ -94,20 +106,26 @@ def rf_short_id(node_name):
         raise UwbNoResponse(f"no response for 'rf_cmd':'sid'")
 
 def rf_get_active_short_ids():
+    global name_to_sid
+    global sid_to_name
+    name_to_sid = {}
+    sid_to_name = {}
     node_ids = {}
     for uid,fname in config["friendlyNames"].items():
         try:
             sid = rf_short_id(fname)
             node_ids[fname]={"sid":sid, "uid":uid}
+            name_to_sid[fname] = sid
+            sid_to_name[sid] = fname
             print(f"({fname}) : ({sid})/({uid})")
         except UwbNoResponse:
             pass
     return node_ids
 
 #TODO count responses not supported yet
-def uwb_ping_diag(pinger, target, at_ms=100, count=0, count_ms=0):
+def uwb_ping_diag_sid(pinger_sid, target_sid, at_ms=100, count=0, count_ms=0):
     try:
-        command = {"uwb_cmd":"ping","pinger":pinger,"target":target,"at_ms":at_ms}
+        command = {"uwb_cmd":"ping","pinger":pinger_sid,"target":target_sid,"at_ms":at_ms}
         if(count!=0):
             command["count"]="count"
         if(count_ms!=0):
@@ -124,7 +142,12 @@ def uwb_ping_diag(pinger, target, at_ms=100, count=0, count_ms=0):
                 return data['diag']
         raise UwbNoResponse(f"no 'uwb_cmd' in response")
     except queue.Empty:
-        raise UwbNoResponse(f"no response from pinger({pinger}) -> target({target})")
+        raise UwbNoResponse(f"no response from pinger({pinger_sid}) -> target({target_sid})")
+
+def uwb_ping_diag(pinger_name, target_name, at_ms=100, count=0, count_ms=0):
+    pinger_sid = name_to_sid[pinger_name]
+    target_sid = name_to_sid[target_name]
+    return uwb_ping_diag_sid(pinger_sid,target_sid,at_ms, count, count_ms)
 
 def dwt_config_get(node_name="all"):
     try:
@@ -149,10 +172,11 @@ def dwt_config_get(node_name="all"):
     except queue.Empty:
         return {}
 
-def dwt_config_set(node_name, chan=5,):
+def dwt_config_set(node_name, chan=5):
+    #TODO
     return
 
-def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=100, step_ms=None,count=None,count_ms=None):
+def uwb_twr_sid(initiator=None, responder=None, initiators=[], responders=[], at_ms=100, step_ms=None,count=None,count_ms=None):
     resp_len = 1
     if(initiator is None) and (not initiators):
         raise UwbTwrArgumentError("initiator needed")
@@ -186,7 +210,7 @@ def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=
         resp_len = resp_len * count
         if(not count_ms):
             raise UwbTwrArgumentError("count_ms is needed when count > 1")
-    start = perf_counter()
+    #start = perf_counter()
     ser.send(base_topic+json.dumps(command)+'\r\n')#0.209
     #ser.send('sm{"uwb_cmd": "twr", "at_ms": 100, "initiator": 0, "responders": [1, 2, 3, 4], "step_ms": 10}\r\n')
     try:
@@ -214,13 +238,32 @@ def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=
             return result
     except queue.Empty:
         raise UwbNoResponse(f"No or not enough responses receveid({received}) / expected({resp_len})")
-    return
 
+def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=100, step_ms=None,count=None,count_ms=None):
+    initiator_sid = None
+    responder_sid = None
+    initiators_sid = []
+    responders_sid = []
+    if(initiator is not None):
+        initiator_sid = name_to_sid[initiator]
+    if(responder is not None):
+        responder_sid = name_to_sid[responder]
+    if(initiators):
+        for name in initiators:
+            initiators_sid.append(name_to_sid[name])
+    if(responders):
+        for name in responders:
+            responders_sid.append(name_to_sid[name])
+    result = uwb_twr_sid(initiator_sid, responder_sid, initiators_sid, responders_sid, at_ms, step_ms,count,count_ms)
+    for entry in result:
+        entry["initiator"] = sid_to_name[entry["initiator"]]
+        entry["responder"] = sid_to_name[entry["responder"]]
+    return result
 
-def uwb_cir(receiver_node_name):
+def uwb_cir(receiver_name):
     #1016 sampley => 4096 bytes = 200 * 20 + 96
     try:
-        uid = name_to_uid[receiver_node_name]
+        uid = name_to_uid[receiver_name]
         #start = perf_counter()
         command = {"uwb_cmd":"cir_acc"}
         ser.send(base_topic+'/'+uid+json.dumps(command)+'\r\n')
@@ -259,8 +302,8 @@ def test_rf_all_short_id():
             print(f"get_short_id({fname})> not available")
 
 def test_uwb_ping_diag():
-    pinger = 0
-    target = 1
+    pinger = "Tag"
+    target = "Tester"
     diag = uwb_ping_diag(pinger, target)
     print(f"test_uwb_ping> ({pinger})->({target}) stdNoise = {diag['stdNoise']}")
 
@@ -308,7 +351,10 @@ def db_uwb_twr(fileName):
     return
 
 def db_uwb_ping_diag(fileName,nb_repeat):
-    ping_sequence = [(0,1), (0,2), (0,3), (0,4), (1,0), (2,0), (3,0), (4,0)]
+    ping_sequence = [
+                        ("Tag","FrontRight"), ("Tag","FrontLeft"), ("Tag","RearLeft"), ("Tag","Tester"),
+                        ("FrontRight","Tag"), ("FrontLeft","Tag"), ("RearLeft","Tag"), ("Tester","Tag")
+                    ]
     result_list = get_list_uwb_ping_diag(ping_sequence, nb_repeat)
     newFileName = utl.save_json_timestamp(fileName,result_list)
     print(f"db_uwb_ping_diag> {len(result_list)} sequences saved in {newFileName}")

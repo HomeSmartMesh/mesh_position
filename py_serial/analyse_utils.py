@@ -1,6 +1,5 @@
 import utils as utl
 import numpy as np
-import matplotlib.pyplot as plt
 
 data_list = []
 
@@ -19,3 +18,13 @@ def plot_axis_param(paramName, pinger, target,axis):
 def set_data_list(dlist):
     global data_list
     data_list = dlist
+
+def get_range(initiator,responder,twr_list):
+    range_list = []
+    for entry in twr_list:
+        if((entry["initiator"] == initiator) and (entry["responder"] == responder)):
+            if("range" not in entry):
+                print(entry)
+            else:
+                range_list.append(entry["range"])
+    return np.array(range_list, dtype=np.float64)
