@@ -31,6 +31,7 @@ def save_json_timestamp(fileName,data):
     jfile = open(fileName, "w")
     jfile.write(json.dumps(data, indent=4))
     jfile.close()
+    print(f"{len(data)} entries saved in {fileName}")
     return fileName
 
 def load_json(fileName):
