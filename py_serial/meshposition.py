@@ -54,7 +54,10 @@ def start():
 
 def stop():
     stop_messages.put("close")
-    
+
+def clear():
+    print(f"clearing {messages.qsize()} entries")
+    messages.queue.clear()
 
 def listen():
     try:
@@ -89,6 +92,9 @@ def rf_ping_rssi(node_name):
     except queue.Empty:
         return 0
 
+def get_short_id(node_name):
+    return name_to_sid[node_name]
+
 def rf_short_id(node_name):
     try:
         uid = name_to_uid[node_name]
@@ -105,6 +111,10 @@ def rf_short_id(node_name):
     except queue.Empty:
         raise UwbNoResponse(f"no response for 'rf_cmd':'sid'")
 
+def sys_reboot(node_name):
+    uid = name_to_uid[node_name]
+    ser.send(base_topic+'/'+uid+'{"sys_cmd":"reboot"}\r\n')
+        
 def rf_get_active_short_ids():
     global name_to_sid
     global sid_to_name
@@ -213,10 +223,10 @@ def uwb_twr_sid(initiator=None, responder=None, initiators=[], responders=[], at
     #start = perf_counter()
     ser.send(base_topic+json.dumps(command)+'\r\n')#0.209
     #ser.send('sm{"uwb_cmd": "twr", "at_ms": 100, "initiator": 0, "responders": [1, 2, 3, 4], "step_ms": 10}\r\n')
-    try:
-        received = 0
-        messages.get(block=True, timeout=0.4)
-        if(resp_len == 1):#simple API, returns range as single value
+    received = 0
+    messages.get(block=True, timeout=0.4)
+    if(resp_len == 1):#simple API, returns range as single value
+        try:
             (topic,data) = messages.get(block=True, timeout=0.4)
             #end = perf_counter()
             #print(f"response duration = {end-start} s")
@@ -224,8 +234,11 @@ def uwb_twr_sid(initiator=None, responder=None, initiators=[], responders=[], at
                 if(data["uwb_cmd"] == "twr"):
                     received = received + 1
                     return data['range']
-        else:#returns a list
-            result = []
+        except queue.Empty:
+            raise UwbNoResponse(f"No response received")
+    else:#returns a list
+        result = []
+        try:
             for i in range(resp_len):
                 (topic,data) = messages.get(block=True, timeout=0.4)
                 #end = perf_counter()
@@ -235,9 +248,9 @@ def uwb_twr_sid(initiator=None, responder=None, initiators=[], responders=[], at
                         del data["uwb_cmd"]
                         received = received + 1
                         result.append(data)
-            return result
-    except queue.Empty:
-        raise UwbNoResponse(f"No or not enough responses receveid({received}) / expected({resp_len})")
+        except queue.Empty:
+            print(f"No or not enough responses receveid({received}) / expected({resp_len})")
+        return result
 
 def uwb_twr(initiator=None, responder=None, initiators=[], responders=[], at_ms=100, step_ms=None,count=None,count_ms=None):
     initiator_sid = None
@@ -366,3 +379,4 @@ def db_sid_config(fileName):
     newFileName = utl.save_json_timestamp(fileName,node_ids)
     print(f"db_uwb_twr> saved results in {newFileName}")
     return
+
