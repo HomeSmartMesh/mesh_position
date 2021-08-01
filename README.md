@@ -1,3 +1,10 @@
+# Discourse forum
+get support, give feedback or simply chat about ideas on the forum
+
+[![discourse](./forum.png)](https://homesmartmesh.discourse.group/c/networks/ultrawideband/10)
+
+[Home Smart Mesh Forum - Ultra Wide Band Category](https://homesmartmesh.discourse.group/c/networks/ultrawideband/10)
+
 # mesh_position
 High level Analysis and Apps for Mesh Position. An Ultra Wide Band RTLS with json API
 # install
