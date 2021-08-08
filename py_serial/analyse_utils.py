@@ -2,6 +2,7 @@ import utils as utl
 import numpy as np
 import matplotlib.pyplot as plt
 import meshposition as mp
+import json
 
 data_list = []
 
@@ -102,3 +103,19 @@ def range_graph(fileName,lists_list):
     newFileName = utl.save_json_timestamp("ranges "+fileName,ranges)
     print(f"range_graph> saved Ranges in {newFileName}")
     return graph
+
+#------------------------- Graph Multilateration -------------------------
+
+def graphlateration(range_graph,positions = None):
+    position_graph = range_graph #reference, no deep copy
+    #Every node is subject to types of position identification
+    # - reference : already known and fixed
+    # - geometric : correct amout of ranges for cartesian computation
+    # - undefined : not any knwon parameter, can be anywhere (drop from display)
+    # - underdefined : not enough ranges for narrow position but can be on a line solution space (complex display, drop for now)
+    # - overdefined : needs optimization to identify optimal position
+    #----------------
+    # 1. resolve ranges
+    # 2. resolve underdefined and undefined ranges with Signal Strength
+    position_graph["vertices"][0]["viewBox"] = {"x":300,"y":300}
+    return position_graph
