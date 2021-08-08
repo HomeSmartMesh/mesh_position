@@ -87,13 +87,18 @@ def range_graph(fileName,lists_list):
         entry = {
                 "id":id_count,
                 "label":f"{range['range']} m",
+                "range":range['range'],
                 "type":"edge",
                 "inV":vertex_ids[range['initiator']],
                 "outV":vertex_ids[range['responder']]
             }
         edges.append(entry)
         id_count = id_count + 1
+
     graph = {"vertices":vertices, "edges":edges}
-    newFileName = utl.save_json_timestamp(fileName,graph)
+    newFileName = utl.save_json_timestamp("graph "+fileName,graph)
     print(f"range_graph> saved Graphson in {newFileName}")
-    return
+
+    newFileName = utl.save_json_timestamp("ranges "+fileName,ranges)
+    print(f"range_graph> saved Ranges in {newFileName}")
+    return graph

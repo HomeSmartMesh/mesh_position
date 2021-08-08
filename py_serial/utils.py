@@ -4,6 +4,7 @@ import logging as log
 import socket
 from collections import OrderedDict
 import datetime
+from pathlib import Path
 
 # -------------------- json files inout -------------------- 
 def get_local_json():
@@ -27,7 +28,10 @@ def get_local_json():
     return config
 
 def save_json_timestamp(fileName,data):
-    fileName = "./test_db/"+ fileName + datetime.datetime.now().strftime(' %Y.%m.%d %H-%M-%S')+".json"
+    time_now = datetime.datetime.now()
+    dirName = "./test_db/"+time_now.strftime('%Y.%m.%d')
+    Path(dirName).mkdir(parents=True, exist_ok=True)
+    fileName =  dirName + "/" +time_now.strftime('%H-%M-%S ')+ fileName +".json"
     jfile = open(fileName, "w")
     jfile.write(json.dumps(data, indent=4))
     jfile.close()

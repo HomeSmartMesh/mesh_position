@@ -35,6 +35,7 @@
         "txPreambLength": "DWT_PLEN_128"
     },
     "mqtt":{
+        "enabled":true,
         "host":"10.0.0.42",
         "port":1883,
         "keepalive":60,

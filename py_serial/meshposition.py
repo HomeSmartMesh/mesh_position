@@ -6,6 +6,8 @@ import logging as log
 import sys
 import json
 import math
+from mqtt import mqtt_start
+
 class mpError(Exception):
     pass
 class UwbTwrArgumentError(mpError):
@@ -20,6 +22,7 @@ name_to_sid = {}
 sid_to_name = {}
 base_topic = ""
 config = {}
+clientMQTT = None
 
 def serial_on_json(topic,data):
     messages.put((topic,data))
@@ -44,6 +47,7 @@ def start():
     global name_to_uid
     global base_topic
     global config
+    global clientMQTT
     config = utl.configure_log(__file__)
     name_to_uid = {v: k for k, v in config["friendlyNames"].items()}
     log.debug(f"nodes in config db : {name_to_uid}")
@@ -51,6 +55,10 @@ def start():
     ser.serial_start(config,serial_on_json)
     threading.Thread(target=serial_loop_forever, daemon=True).start()
     print("mp>serial thread started")
+    if(config["mqtt"]["enabled"]):
+        clientMQTT = mqtt_start(config,None,True)
+        print(f"mp>mqtt started")
+    return
 
 def stop():
     stop_messages.put("close")
@@ -380,3 +388,10 @@ def db_sid_config(fileName):
     print(f"db_uwb_twr> saved results in {newFileName}")
     return
 
+#------------------------- MQTT Graph Viewing -------------------------
+
+def view(graph_data):
+    if(clientMQTT):
+        graph_topic = config["graph_topic"] + "/reload"
+        clientMQTT.publish(graph_topic,json.dumps(graph_data))
+        print(f"mp> published Graphson to '{graph_topic}'")
