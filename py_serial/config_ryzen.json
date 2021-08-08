@@ -17,6 +17,7 @@
         "5F7D70F99F462C99":"Simple"
     },
     "base_topic":"sm",
+    "graph_topic":"graph",
     "log":{
         "logfile":"log/serial(date).log",
         "level":"Info"
@@ -32,5 +33,15 @@
         "sfdTO": 129,
         "txCode": 9,
         "txPreambLength": "DWT_PLEN_128"
+    },
+    "mqtt":{
+        "host":"10.0.0.42",
+        "port":1883,
+        "keepalive":60,
+        "client_id":"meshposition",
+        "subscriptions":[ ],
+        "actions"   :[],
+        "publish" :true,
+        "subscribe" :false
     }
 }
